@@ -175,6 +175,12 @@
               class="leaflet-map"
               :geo-json-files="geojson"
             ></location-selector>
+            <colorbar
+             :colors="[['#FF8000', 0], ['#FFFFFF', 1]]"
+             orientation="vertical"
+             height="200px"
+             width="50px"
+            ></colorbar>
           </div>
         </v-slide-y-transition>
       </v-hover>
