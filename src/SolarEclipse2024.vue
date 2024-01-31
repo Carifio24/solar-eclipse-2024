@@ -1553,6 +1553,8 @@ export default defineComponent({
       syncDateTimeWithWWTCurrentTime: true,
       syncDateTimewithSelectedTime: true,
 
+      sunOffset: null as { x: number; y: number } | null,
+
       presetMapOptions: {
         templateUrl: "https://watercolormaps.collection.cooperhewitt.org/tile/watercolor/{z}/{x}/{y}.jpg",
         minZoom: 1,
@@ -2191,6 +2193,7 @@ export default defineComponent({
     },
     
     async trackSun(): Promise<void> {
+      this.sunOffset = null;
       return this.gotoTarget({
         place: this.sunPlace,
         instant: true,
@@ -2200,6 +2203,7 @@ export default defineComponent({
     },
 
     async centerSun(): Promise<void> {
+      this.sunOffset = null;
       return this.gotoTarget({
         place: this.sunPlace,
         instant: true,
@@ -2433,6 +2437,14 @@ export default defineComponent({
       // eslint-disable-next-line @typescript-eslint/ban-ts-comment
       // @ts-ignore
       this.trackingSun = wwtControl._trackingObject === this.sunPlace;
+
+      if (!this.trackingSun && this.sunOffset !== null) {
+        const location = this.findRADecForScreenPoint(this.sunOffset);
+        const place = new Place();
+        place.set_RA(location.ra);
+        place.set_dec(location.dec);
+        wwtControl._trackingObject = place;
+      }
     },
 
     textureFromAssetImage(assetFilename: MoonImageFile): Texture {
@@ -2805,9 +2817,14 @@ export default defineComponent({
       this.pointerStartPosition = { x: event.pageX, y: event.pageY };
     },
 
-    onPointerUp() {
+    onPointerUp(event: PointerEvent) {
       this.pointerStartPosition = null;
       this.isPointerMoving = false;
+      if (event instanceof TouchEvent) {
+        const sunLocation = { ra: sunPlace.get_RA(), dec: sunPlace.get_dec() };
+        const sunPoint = this.findScreenPointForRADec(sunLocation);
+        this.sunOffset = { x: event.offsetX - sunPoint.x, y: event.offsetY - sunPoint.y };
+      }
     },
 
 
