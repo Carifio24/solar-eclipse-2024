@@ -303,6 +303,7 @@ type CityLocation = {
   latitudeDeg: number;
 };
 
+// This type will only match strings that end with ".zip"
 type ZipPath<T extends string> = T extends `${string}.zip` ? T : `${T} is not a valid zip filepath`;
 
 const cityBoston: CityLocation = {
@@ -832,7 +833,7 @@ export default defineComponent({
       });
     },
 
-    async loadDataFromZip<Path extends string>(path: ZipPath<Path>) {
+    async loadDataFromZip<T extends string>(path: ZipPath<T>) {
       return import(path)
         .then(module => fetch(module.default))
         .then(async (response) => {
@@ -840,80 +841,53 @@ export default defineComponent({
           return inflate(data, { to: 'string' });
         });
     },
-    
+
+    parseCsvFromZip<T extends string>(path: ZipPath<T>): Promise<CloudSummaryData[]> {
+      return this.loadDataFromZip(path)
+        .then(csv => csvParseRows(csv, (row, i) => {
+          if (i === 0) {return;}
+          return {
+            lat: +row[0],
+            lon: +row[1],
+            mean: +row[2],
+            median: +row[3],
+            mode: +row[4],
+            min: +row[5],
+            max: +row[6],
+          } as CloudSummaryData;
+        }));
+    },
+
     async getElNinoData() {
       console.log('loading el nino data');
-      return this.loadDataFromZip(`./assets/modis_${this.modisDataSet === '1day' ? 'one': 'eight'}_day/nino_ucm.zip`)
+      return this.parseCsvFromZip(`./assets/modis_${this.modisDataSet === '1day' ? 'one': 'eight'}_day/nino_ucm.zip`)
         .then(csv => {
-          this.elNinoYearsSummary[this.modisDataSet] = csvParseRows(csv, (row, i) => {
-            if (i === 0) {return;}
-            return {
-              lat: +row[0],
-              lon: +row[1],
-              mean: +row[2],
-              median: +row[3],
-              mode: +row[4],
-              min: +row[5],
-              max: +row[6],
-            } as CloudSummaryData;
-          });
+          this.elNinoYearsSummary[this.modisDataSet] = csv;
         });
     },
-    
+
     async getNeutralData() {
       console.log('loading neutral data');
-      // './assets/modis_eight_day/neutral_ucm.csv'
-      await import(`./assets/modis_${this.modisDataSet === '1day' ? 'one': 'eight'}_day/neutral_ucm.csv`).then((module) => {
-        this.neutralYearsSummary[this.modisDataSet] = csvParseRows(module.default, (row, i) => {
-          if (i === 0) {return;}
-          return {
-            lat: +row[0],
-            lon: +row[1],
-            mean: +row[2],
-            median: +row[3],
-            mode: +row[4],
-            min: +row[5],
-            max: +row[6],
-          } as CloudSummaryData;
+      return this.parseCsvFromZip(`./assets/modis_${this.modisDataSet === '1day' ? 'one': 'eight'}_day/neutral_ucm.zip`)
+        .then(csv => {
+          this.neutralYearsSummary[this.modisDataSet] = csv;
         });
-      });
     },
-    
+
     async getLaNinaData() {
-      await import(`./assets/modis_${this.modisDataSet === '1day' ? 'one': 'eight'}_day/nina_ucm.csv`).then((module) => {
-        // get number of rows in the csv
-        this.laNinaYearsSummary[this.modisDataSet] = csvParseRows(module.default, (row, i) => {
-          if (i === 0) {return;}
-          return {
-            lat: +row[0],
-            lon: +row[1],
-            mean: +row[2],
-            median: +row[3],
-            mode: +row[4],
-            min: +row[5],
-            max: +row[6],
-          } as CloudSummaryData;
+      return this.parseCsvFromZip(`./assets/modis_${this.modisDataSet === '1day' ? 'one': 'eight'}_day/nina_ucm.zip`)
+        .then(csv => {
+          this.laNinaYearsSummary[this.modisDataSet] = csv;
         });
-      });
     },
-    
+
     async getAllYearsData() {
-      await import(`./assets/modis_${this.modisDataSet === '1day' ? 'one' : 'eight'}_day/all_years_ucm.csv`).then((module) => {
-        this.allYearsSummary[this.modisDataSet] = csvParseRows(module.default, (row, i) => {
-          if (i === 0) {return;}
-          return {
-            lat: +row[0],
-            lon: +row[1],
-            mean: +row[2],
-            median: +row[3],
-            mode: +row[4],
-            min: +row[5],
-            max: +row[6],
-          } as CloudSummaryData;
+      return this.parseCsvFromZip(`./assets/modis_${this.modisDataSet === '1day' ? 'one' : 'eight'}_day/all_years_ucm.zip`)
+        .then(csv => {
+          this.allYearsSummary[this.modisDataSet] = csv;
         });
-      });
     },
-    
+
     getDataForYears(years: number[]): CloudData {
       // get the cloud data for a location for a set of years
       const data = [] as CloudData;
