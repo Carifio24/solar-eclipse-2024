@@ -834,9 +834,14 @@ export default defineComponent({
     },
 
     async loadDataFromZip<T extends string>(path: ZipPath<T>) {
+      console.log(path);
       return import(path)
-        .then(module => fetch(module.default))
+        .then(module => {
+          console.log(module.default);
+          return fetch(module.default);
+        })
         .then(async (response) => {
+          console.log(response);
           const data = new Uint8Array(await response.arrayBuffer());
           return inflate(data, { to: 'string' });
         });
@@ -911,8 +916,8 @@ export default defineComponent({
       console.log('awv: loading cloud data');
       this.dataLoadingProgress = 0;
       this.allYears.map((val: number, index) => {
-        import(`./assets/modis_eight_day/${val}_cloud_cover.csv`).then((module) => {
-          const data = csvParseRows(module.default, (row, i) => {
+        this.loadDataFromZip(`./assets/modis_eight_day/${val}_cloud_cover.zip`).then((csv) => {
+          const data = csvParseRows(csv, (row, i) => {
             if (i === 0) {return {} as CloudDataElement;}
             return {
               lat: latitudesEightDay[i-1], // minus one cuz first row is header
