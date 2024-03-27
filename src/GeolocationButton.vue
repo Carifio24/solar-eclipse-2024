@@ -57,12 +57,15 @@ import { defineComponent } from 'vue';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VProgressCircular } from 'vuetify/lib/components/index.mjs';
 
+import { Geolocation, PermissionStatus, Position, PositionOptions } from "@capacitor/geolocation";
+
+type PositionCoords = Position['coords'];
+
 type Density = null | 'default' | 'comfortable' | 'compact';
 
 export default defineComponent({
   
   name: 'GeolocationButton',
-
 
   components: {
     'v-btn': VBtn,
@@ -171,7 +174,7 @@ export default defineComponent({
 
   emits: {
     // declare emits but w/o any verification. -_- 
-    geolocation: (_payload: GeolocationCoordinates) => true,
+    geolocation: (_payload: PositionCoords) => true,
     error: (_payload: GeolocationPositionError) => true,
     permission: (_payload: boolean | string) => true,
     permissionDenied: (_payload: boolean) => true,
@@ -179,7 +182,7 @@ export default defineComponent({
   
   data() {
     return {
-      geolocation: null as GeolocationCoordinates | null,
+      geolocation: null as PositionCoords | null,
       geolocationError: null as GeolocationPositionError | null,
       permissions: '',
       permissionGranted: false,
@@ -192,28 +195,25 @@ export default defineComponent({
     };
   },
   
-  created() {
-  },
-  
   mounted() {
     
     // Check the Permissions API to see if the user has
     // granted the browser permission to access their location
-    if (!navigator.permissions) {
-      console.error('Permissions API not supported');
-      this.noPermissionsApi = true;
-      this.$emit('permission', 'denied');
-      return;
-    }
-    const query = navigator.permissions.query({ name: 'geolocation' });
-    query.then((result) => {
-      this.handlePermission(result);
-      result.onchange= () => {
-        this.handlePermission(result);
-      };
-    });
-    
-    
+    Geolocation.requestPermissions({ permissions: ['location', 'coarseLocation'] })
+      .then(permissions => this.handlePermission(permissions))
+      .catch((_error) => {
+        // Geolocation.requestPermissions is unimplemented on web and just throws,
+        // hence this
+        Geolocation.checkPermissions()
+          .then(permissions => this.handlePermission(permissions))
+          .catch((error) => {
+            console.error(error);
+            console.error('Permissions API not supported');
+            this.noPermissionsApi = true;
+            this.$emit('permission', 'denied');
+            return;
+          });
+      });
   },
 
   computed: {
@@ -226,32 +226,25 @@ export default defineComponent({
     
     handlePermission(result: PermissionStatus) { 
       
-      if (result.state === 'granted') {
+      if (result.location === 'granted' || result.coarseLocation === 'granted') {
         this.permissionGranted = true;
         this.debugmsg('Permission granted');
-        
-      } else if (result.state === 'prompt') {
-        
-        this.debugmsg('Permission prompt');
-        
-      } else if (result.state === 'denied') {
-
+      } else if (result.location === 'denied' && result.coarseLocation === 'denied') {
         this.debugmsg('Permission denied');
-
+      } else if (result.location === 'prompt' || result.coarseLocation === 'prompt') {
+        this.debugmsg('Permission prompt');
       }
-      this.permissions = result.state;
+      // TODO: this isn't correct yet
+      this.permissions = result.location;
     },
     
     
-    handlePosition(position: GeolocationPosition) {
-      // Handle the position
+    handlePosition(position: Position) {
       this.geolocation = position.coords;
       this.geolocationError = null;
     },
     
     handleGeolocationError(error: GeolocationPositionError) {
-      // Handle the error
-      
       console.error('Geolocation error:', error);
       
       if (this.permissions === 'prompt') {
@@ -273,36 +266,30 @@ export default defineComponent({
         return;
       }
       
-      const options = {
+      const options: PositionOptions = {
         enableHighAccuracy: true,
         timeout: 60 * 1000, // 1 minute
         maximumAge: 0,
       };
       
       
-      if (navigator.geolocation) {
-        this.loading = showLoading;  
-        this.debugmsg('Getting location');
-        navigator.geolocation.getCurrentPosition(
-          (position) => {
-            this.handlePosition(position);
-            this.loading = false;
-            this.debugmsg('Got location');
-            this.loaded = true;
-            setTimeout(() => {
-              this.loaded = false; 
-            }, 5000); // 5 seconds
-
-          },
-          
-          (error) => {
-            this.handleGeolocationError(error);
-            this.loading = false;
-            this.debugmsg(`Error: ${error.message}`);
-          },
-          options
-        );
-      } 
+      this.loading = showLoading;  
+      this.debugmsg('Getting location');
+      Geolocation.getCurrentPosition(options)
+        .then((position) => {
+          this.handlePosition(position);
+          this.loading = false;
+          this.debugmsg('Got location');
+          this.loaded = true;
+          setTimeout(() => {
+            this.loaded = false; 
+          }, 5000); // 5 seconds
+        })
+        .catch((error) => {
+          this.handleGeolocationError(error);
+          this.loading = false;
+          this.debugmsg(`Error: ${error.message}`);
+        });
         
     },
     
