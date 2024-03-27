@@ -28,3 +28,17 @@ The built story is just a set of HTML/CSS/JS + any assets that you add, so it sh
 ## BrowserStack testing - CosmicDS team
 
 If you're a member of the CosmicDS team, we can perform E2E testing (both locally and in Github Actions) using BrowserStack. See the tests in the [Carina data story](https://github.com/cosmicds/carinads) as an example. Note that you'll need to have our BrowserStack username and access key for this to work correctly.
+
+## Capacitor
+
+To build Android and iOS versions of this with Capacitor, use the following commands
+
+```
+# Add the platforms (this doesn't seem to get reflected in the Capacitor config?)
+yarn cap add android
+yarn cap add ios
+
+# To sync the current web bundle with the Android/iOS apps
+yarn build
+yarn cap sync
+```
