@@ -57,7 +57,8 @@ import { defineComponent } from 'vue';
 import { VBtn } from 'vuetify/components/VBtn';
 import { VProgressCircular } from 'vuetify/lib/components/index.mjs';
 
-import { Geolocation, PermissionStatus, Position, PositionOptions } from "@capacitor/geolocation";
+import { Capacitor } from '@capacitor/core';
+import { Geolocation, PermissionStatus as CapacitorPermissionStatus, Position, PositionOptions } from "@capacitor/geolocation";
 
 type PositionCoords = Position['coords'];
 
@@ -199,21 +200,26 @@ export default defineComponent({
     
     // Check the Permissions API to see if the user has
     // granted the browser permission to access their location
-    Geolocation.requestPermissions({ permissions: ['location', 'coarseLocation'] })
-      .then(permissions => this.handlePermission(permissions))
-      .catch((_error) => {
-        // Geolocation.requestPermissions is unimplemented on web and just throws,
-        // hence this
-        Geolocation.checkPermissions()
-          .then(permissions => this.handlePermission(permissions))
-          .catch((error) => {
-            console.error(error);
-            console.error('Permissions API not supported');
-            this.noPermissionsApi = true;
-            this.$emit('permission', 'denied');
-            return;
-          });
-      });
+
+    // Geolocation.requestPermissions is unimplemented on web and just throws, hence this
+    const web = Capacitor.getPlatform() === 'web';
+    if (web) {
+      if (!navigator.permissions) {
+        this.handleNotSupported();
+        return;
+      }
+      navigator.permissions.query({ name: "geolocation" })
+        .then((result) => {
+          this.handleNavigatorPermission(result);
+          result.onchange= () => {
+            this.handleNavigatorPermission(result);
+          };
+        });
+    } else {
+      Geolocation.requestPermissions({ permissions: ['location', 'coarseLocation'] })
+        .then(permissions => this.handleCapacitorPermission(permissions))
+        .catch(error => this.handleGeolocationError(error));
+    }
   },
 
   computed: {
@@ -223,9 +229,14 @@ export default defineComponent({
   },
 
   methods: {
+
+    handleNotSupported() {
+      console.error('Permissions API not supported');
+      this.noPermissionsApi = true;
+      this.$emit('permission', 'denied');
+    },
     
-    handlePermission(result: PermissionStatus) { 
-      
+    handleCapacitorPermission(result: CapacitorPermissionStatus) { 
       if (result.location === 'granted' || result.coarseLocation === 'granted') {
         this.permissionGranted = true;
         this.debugmsg('Permission granted');
@@ -237,7 +248,18 @@ export default defineComponent({
       // TODO: this isn't correct yet
       this.permissions = result.location;
     },
-    
+
+    handleNavigatorPermission(result: PermissionStatus) { 
+      if (result.state === 'granted') {
+        this.permissionGranted = true;
+        this.debugmsg('Permission granted');
+      } else if (result.state === 'prompt') {
+        this.debugmsg('Permission prompt');
+      } else if (result.state === 'denied') {
+        this.debugmsg('Permission denied');
+      }
+      this.permissions = result.state;
+    },
     
     handlePosition(position: Position) {
       this.geolocation = position.coords;
