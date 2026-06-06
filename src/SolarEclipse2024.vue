@@ -2466,7 +2466,7 @@ export default defineComponent({
     
     this.searchOpen = this.smAndUp;
     
-    this.createUserEntry();
+    // this.createUserEntry();
 
     // We just need to force these to get around some Safari issues whose cause is TBD
     Planets._loadPlanetTextures();
