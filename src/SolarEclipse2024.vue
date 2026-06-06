@@ -2466,7 +2466,7 @@ export default defineComponent({
     
     this.searchOpen = this.smAndUp;
     
-    // this.createUserEntry();
+    this.createUserEntry();
 
     // We just need to force these to get around some Safari issues whose cause is TBD
     Planets._loadPlanetTextures();
@@ -3574,23 +3574,23 @@ export default defineComponent({
         return;
       }
 
-      let gaveRating = false;
-      if (userExists) {
-        const ratingResponse = await fetch(`${this.storyRatingUrl}/${this.uuid}`, {
-          method: "GET",
-          // eslint-disable-next-line @typescript-eslint/naming-convention
-          headers: { "Authorization": process.env.VUE_APP_CDS_API_KEY ?? "" }
-        });
+      // let gaveRating = false;
+      // if (userExists) {
+      //   const ratingResponse = await fetch(`${this.storyRatingUrl}/${this.uuid}`, {
+      //     method: "GET",
+      //     // eslint-disable-next-line @typescript-eslint/naming-convention
+      //     headers: { "Authorization": process.env.VUE_APP_CDS_API_KEY ?? "" }
+      //   });
 
-        const ratingContent = await ratingResponse.json();
-        gaveRating = ratingResponse.status === 200 && ratingContent.ratings?.length > 0;
-      }
-
-      if (!gaveRating) {
-        this.questionTimeout = setTimeout(() => {
-          this.showRating = true;
-        }, 60_000);
-      }
+      //   const ratingContent = await ratingResponse.json();
+      //   gaveRating = ratingResponse.status === 200 && ratingContent.ratings?.length > 0;
+      // }
+      // 
+      // if (!gaveRating) {
+      //   this.questionTimeout = setTimeout(() => {
+      //     this.showRating = true;
+      //   }, 60_000);
+      // }
     },
 
     resetData() {
